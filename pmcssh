@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Release under the terms of the GPL licence
+# You can get a copy of the license at http://www.gnu.org
+# Description: A Poor man's clusterssh clone, using the terminal multiplexer.
+# By: Matt Hersant (matt_hersant[at]yahoo[dot]com)
+
+# Check to see if human's machine has tmux installed.
+which tmux > /dev/null 2>&1 || {
+    echo -e "\nThis script requires tmux.  tmux was not found.\n"
+    exit 3
+}
+
+# Human passed no arguments.  Print help and exit.
+[ ! "$1" ] && {
+    echo -e "\nUsage: pmcssh host1 host2 host3 ...\n"
+    exit 2
+}
+
+SESSION="pmcssh"
+
+# Check to see if human already has an open session.
+# If so, connect them to it.
+tmux list-sessions 2> /dev/null | awk -F: '{ print $1 }' | grep -q $SESSION && {
+    echo "Existing session... connecting in 2 seconds."
+    echo "Control-C to cancel"
+    sleep 2
+    exec tmux attach -t $SESSION
+}
+
+# Create a detached tmux session.  Note that we use a succinct prompt to conserve space.
+tmux new -d -s $SESSION "exec ssh -oStrictHostKeyChecking=no $1 -t \"export PS1='\h> '; exec sh\" "
+
+# Remove first elemetn of implied command line array.  It was used for
+# tmux session creation.  Otherwise we would have a duplicate pane.
+shift
+
+# Iterate over passed hosts.  Create a new pane for each one.
+for host in $@
+do
+    tmux splitw -t $SESSION "exec ssh -oStrictHostKeyChecking=no $host -t \"export PS1='\h> '; exec sh\" "
+    tmux selectl -t $SESSION tiled 
+done
+
+# Disable status at bottom.
+tmux setw -t $SESSION status off
+
+# Endow human with mouse capabilities
+tmux set -g mode-mouse on
+tmux set -g mouse-resize-pane on
+tmux set -g mouse-select-pane on
+tmux set -g mouse-select-window on
+
+tmux set -g prefix C-a
+tmux bind y setw -t $SESSION synchronize-panes on
+tmux bind n setw -t $SESSION synchronize-panes off
+
+# Multiplex output to all panes.
+tmux setw -t $SESSION synchronize-panes on
+
+# Attach to session.
+exec tmux attach -t $SESSION
