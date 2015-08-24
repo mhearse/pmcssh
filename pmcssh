@@ -11,7 +11,6 @@ which tmux > /dev/null 2>&1 || {
     exit 3
 }
 
-# Human passed no arguments.  Print help and exit.
 [ ! "$1" ] && {
     echo -e "\nUsage: pmcssh host1 host2 host3 ...\n"
     exit 2
@@ -20,7 +19,7 @@ which tmux > /dev/null 2>&1 || {
 SESSION="pmcssh"
 
 # Check to see if human already has an open session.
-# If so, connect them to it.
+# If so, connect them to it
 tmux list-sessions 2> /dev/null | awk -F: '{ print $1 }' | grep -q $SESSION && {
     echo "Existing session... connecting in 2 seconds."
     echo "Control-C to cancel"
@@ -51,7 +50,10 @@ tmux set -g mouse-resize-pane on
 tmux set -g mouse-select-pane on
 tmux set -g mouse-select-window on
 
+# Give human ctrl-a escape sequence, akin to gnu screen.
+# So that their brain doesn't break.
 tmux set -g prefix C-a
+# Set escape sequences to enable/disable pane sync.
 tmux bind y setw -t $SESSION synchronize-panes on
 tmux bind n setw -t $SESSION synchronize-panes off
 
